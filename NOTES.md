@@ -52,18 +52,19 @@ Boot unmodified Apple iOS 16.7.16 (20H392, iPhone X / D22AP userland) natively o
 
 ### Milestone 2: Apple Device Tree (ADT) Generator
 * **Artifact**: `tools/mkadt.py` with `--halo` flag.
-* **Generated ADT**: `shim/out/halo.adt` (10,288 bytes).
+* **Generated ADT**: `shim/out/halo.adt` (12,976 bytes).
 * **Properties**:
   * Memory: 4 GiB upper bank at `0x100000000` (8GB+ RAM).
   * 8 CPU nodes (`cpu0`..`cpu7`) with exact MPIDRs and cluster IDs.
   * GICv3 node with INTID 27 and `0x40000` stride.
   * Framebuffer nub at `0xb8000000` (1080x2400).
   * UFS host node at `0x01d84000`.
+  * Real Apple iPhone X `/product` node integrated: 63 authentic product and calibration properties extracted directly from `DeviceTree.d22ap.im4p` (iOS 16.7.16 20H392).
   * Identity: `D22AP` / `iPhone10,3` (`lenovo,halo`).
 
 ### Milestone 3: XNU Build Configuration & Patches
 * **Workflow**: `.github/workflows/xnu.yml` updated to `-march=armv8.5-a`.
-* **Patch 0081**: Updated to `-march=armv8.5-a+crypto`, restoring native LSE and PAN.
+* **Patch 0081**: Tuned for SM8475: preserves native hardware PAN (`__ARM_PAN_AVAILABLE__ 1`) and native ARMv8.5-A `casa` atomic instructions in `commpage_asm.s` (no software emulation loops needed).
 * **Patch 0004**: `GICR_PE_SIZE` updated to `0x40000` (256 KiB) for GIC-600.
 
 ---
@@ -71,18 +72,17 @@ Boot unmodified Apple iOS 16.7.16 (20H392, iPhone X / D22AP userland) natively o
 ## Next Concrete Actions (What to do without the phone)
 
 1. **Prepare the iOS 16 Rootfs Image**:
-   * Download the iPhone X IPSW (iOS 16.7.16 20H392, `iPhone10,3_16.7.16_20H392_Restore.ipsw`).
-   * Extract disk images (`OS.dmg`, `SystemOS.dmg`, `AppOS.dmg`) and `Firmware/all_flash/DeviceTree.d22ap.im4p`.
-   * Extract `/product` properties for the ADT via `tools/remotezip.py` / `ipsw`.
-   * Create `ios16-root.simg` using `tools/mkiosroot.sh` and `tools/sweet-root-tweaks.py`.
+   * Verified Apple CDN direct access to iOS 16.7.16 (20H392) IPSW via HTTP range requests.
+   * `research/ipsw-x/d22ap.adt` decompressed and active.
+   * Prepare/download the DMGs (`OS.dmg`, `SystemOS.dmg`, `AppOS.dmg`) when ready to construct `ios16-root.simg`.
 
 2. **Trigger XNU Kernel Build**:
-   * Push the repository to GitHub.
-   * Trigger `.github/workflows/xnu.yml`.
+   * Authenticate / push the repo to GitHub (`gh auth login` or git push).
+   * Run workflow `.github/workflows/xnu.yml`.
    * Download the compiled `kernel.development.sweet`.
 
 3. **Pack Payload**:
-   * Run `python3 tools/mkpayload.py kernel.development.sweet shim/out/halo.adt shim/out/payload.bin --cmdline "..."`.
+   * Run `python3 tools/mkpayload.py kernel.development.sweet shim/out/halo.adt shim/out/payload.bin --cmdline "debug=0xc serial=3 cpus=8 keepsyms=1 -noprogress rd=ufsroot0 unentitled_ios_sim_launch=1 ignition_level=1 wdt_test=no_user_checkin ufsrw=1 rootrw=1 launchd_unsecure_cache=1 wdt=-1 sweetfb_noconsole=1 sweetfb_hz=60"`.
    * Rebuild `shim/build.sh shim/out/payload.bin` to generate `shim-boot.img` containing the full XNU kernel!
 
 4. **Prepare Touchscreen Driver for Goodix GT9916**:
