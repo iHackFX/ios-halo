@@ -12,42 +12,6 @@ index 9a748ea..7a7cf4d 100644
  
  
  #
-diff --git a/osfmk/arm/commpage/commpage_asm.s b/osfmk/arm/commpage/commpage_asm.s
-index da0bbba..32582c0 100644
---- a/osfmk/arm/commpage/commpage_asm.s
-+++ b/osfmk/arm/commpage/commpage_asm.s
-@@ -273,7 +273,14 @@ _pfz_trylock_and_enqueue:
- 	mov		w11, #1			 // locked value = w11 = 1
- 
- 	// Try to grab the lock
--	casa	w10, w11, [x3]	 // Atomic CAS with acquire barrier
-+	// topaz (ARMv8.0, no LSE): CASA as an LDAXR/STXR loop, w10 = old value
-+1:	ldaxr	w10, [x3]
-+	cbnz	w10, 2f
-+	stxr	w12, w11, [x3]
-+	cbnz	w12, 1b
-+	b	3f
-+2:	clrex
-+3:
- 	cbz		w10, Ltrylock_enqueue_success
- 
- 	mov		x0, #-1			// Failed
-@@ -323,7 +330,14 @@ _pfz_trylock_and_dequeue:
- 	mov		w10, wzr		 // unlock value = w10 = 0
- 	mov		w11, #1			 // locked value = w11 = 1
- 
--	casa	w10, w11, [x2]	 // Atomic CAS with acquire barrier
-+	// topaz (ARMv8.0, no LSE): CASA as an LDAXR/STXR loop, w10 = old value
-+1:	ldaxr	w10, [x2]
-+	cbnz	w10, 2f
-+	stxr	w12, w11, [x2]
-+	cbnz	w12, 1b
-+	b	3f
-+2:	clrex
-+3:
- 	cbz		w10, Ltrylock_dequeue_success
- 
- 	mov		x0, #-1			// Failed
 diff --git a/osfmk/arm64/machine_routines_asm.s b/osfmk/arm64/machine_routines_asm.s
 index 2449334..9faf940 100644
 --- a/osfmk/arm64/machine_routines_asm.s
@@ -60,8 +24,7 @@ index 2449334..9faf940 100644
 +
 +#if defined(SWEET)
 +/*
-+ * topaz (Cortex-A53/A73, ARMv8.0): emulate one LSE atomic / LDAPR on a user
-+ * address for handle_uncategorized() in sleh.c.
++ * Fallback LSE emulation on a user address for handle_uncategorized() in sleh.c.
 + *
 + * int _sweet_lse_{b,h,w,x}(user_addr_t addr, uint32_t op, uint64_t operand,
 + *                          uint64_t compare, uint64_t *old)
@@ -87,7 +50,7 @@ index 2449334..9faf940 100644
 +	b.ne	7f
 +	mov	\r\()11, \r\()2
 +	b	5f
-+20:	cmp	w1, #8
+20:	cmp	w1, #8
 +	b.ne	21f
 +	mov	\r\()11, \r\()2
 +	b	5f
@@ -156,11 +119,7 @@ index 24f1abc..a2a8c1b 100644
 +extern int _sweet_lse_x(user_addr_t, uint32_t, uint64_t, uint64_t, uint64_t *);
 +
 +/*
-+ * topaz (Cortex-A53/A73, ARMv8.0): the iPhone X userland still has LSE
-+ * atomics (LD<op>, SWP, CAS) and LDAPR outside its CPU-capability checks.
-+ * Emulate them atomically with LDAXR/STLXR on the user address
-+ * (machine_routines_asm.s); returns false for anything else (CASP stays
-+ * EXC_BAD_INSTRUCTION).
++ * Fallback LSE atomic emulation for non-LSE cores if any.
 + */
 +static bool
 +sweet_emulate_lse(arm_saved_state_t *state, uint32_t instr)
@@ -237,16 +196,3 @@ index 24f1abc..a2a8c1b 100644
  #if CONFIG_DTRACE
  
  	if (PSR64_IS_USER64(get_saved_state_cpsr(state))) {
-diff --git a/pexpert/pexpert/arm64/SWEET.h b/pexpert/pexpert/arm64/SWEET.h
-index ebf0107..424e1c0 100644
---- a/pexpert/pexpert/arm64/SWEET.h
-+++ b/pexpert/pexpert/arm64/SWEET.h
-@@ -34,7 +34,7 @@
- #define __ARM_DEBUG__             7
- #define __ARM_ENABLE_SWAP__       1
- #define __ARM_V8_CRYPTO_EXTENSIONS__ 1
--#define __ARM_PAN_AVAILABLE__     1
-+/* topaz: Cortex-A53/A73 have no PAN (ARMv8.1); MSR PAN is undefined there */
- #define __ARM_16K_PG__            1
- 
- #define HAS_GIC_V3                1
