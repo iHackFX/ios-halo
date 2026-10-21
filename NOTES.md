@@ -66,6 +66,8 @@ Boot unmodified Apple iOS 16.7.16 (20H392, iPhone X / D22AP userland) natively o
 * **Workflow**: `.github/workflows/xnu.yml` updated to `-march=armv8.5-a`.
 * **Patch 0081**: Tuned for SM8475: preserves native hardware PAN (`__ARM_PAN_AVAILABLE__ 1`) and native ARMv8.5-A `casa` atomic instructions in `commpage_asm.s` (no software emulation loops needed).
 * **Patch 0004**: `GICR_PE_SIZE` updated to `0x40000` (256 KiB) for GIC-600.
+* **GitHub Repository**: https://github.com/iHackFX/ios-halo (public)
+* **CI Build Run**: Run ID [`39689272289`](https://github.com/iHackFX/ios-halo/actions/runs/39689272289), Job ID `119531118203` (in progress on `macos-14` runner).
 
 ---
 
