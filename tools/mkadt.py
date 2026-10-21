@@ -308,12 +308,14 @@ def build(seed=None, qemu=False, highmem=False, native=False, midmem=False, halo
 
 
 if __name__ == '__main__':
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    out_path = args[0] if args else 'adt.bin'
     is_halo = '--halo' in sys.argv or not ('--topaz' in sys.argv or '--sweet' in sys.argv)
     root = build(qemu='--qemu' in sys.argv, highmem='--highmem' in sys.argv,
                  native='--native' in sys.argv, midmem='--midmem' in sys.argv,
                  halo=is_halo)
     blob = adt.serialize(root)
-    open(sys.argv[1], 'wb').write(blob)
+    open(out_path, 'wb').write(blob)
     if '--dump' in sys.argv:
         adt.dump(adt.parse(blob)[0])
-    print(f'{sys.argv[1]}: {len(blob)} bytes (halo={is_halo})', file=sys.stderr)
+    print(f'{out_path}: {len(blob)} bytes (halo={is_halo})', file=sys.stderr)
