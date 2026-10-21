@@ -1,0 +1,24 @@
+# Generated outputs
+out/
+shim/out/
+*.o
+*.elf
+*.bin
+*.simg
+*.adt
+*.dts
+
+# Build trees and caches
+.ccache/
+dxb/
+fakeroot/
+buildtree.tgz
+
+# Downloaded reference dumps and trees
+repo_topaz/
+halo_dt/
+halo_kernel/
+kernel_tree/
+sm8475_common/
+dtbo_extracted/
+research/
